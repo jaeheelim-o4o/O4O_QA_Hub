@@ -75,7 +75,8 @@ def api_create_dashboard():
     def create_filter(name, jql):
         r = http_requests.post(f"{jira_base_url}/rest/api/3/filter", headers=headers, json={
             "name": name, "jql": jql,
-            "sharePermissions": [{"type": "authenticated"}]
+            "sharePermissions": [{"type": "authenticated"}],
+            "editPermissions": [{"type": "authenticated"}]
         })
         if r.ok:
             return r.json()["id"]
