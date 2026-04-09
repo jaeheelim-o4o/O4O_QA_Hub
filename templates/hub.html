@@ -96,42 +96,12 @@
         .tool-section { display: none; flex: 1; flex-direction: column; height: 100%; }
         .tool-section.active { display: flex; }
 
-        /* TC 생성기 안내 */
-        .tc-placeholder {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .tc-card {
-            background: white;
-            border-radius: 20px;
-            padding: 48px 56px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-            max-width: 440px;
+        /* TC 생성기 iframe */
+        #tc-frame {
             width: 100%;
+            flex: 1;
+            border: none;
         }
-
-        .tc-card .icon { font-size: 52px; margin-bottom: 16px; }
-        .tc-card h2 { font-size: 22px; color: #1e1e2e; margin-bottom: 8px; }
-        .tc-card p { font-size: 14px; color: #6b7280; margin-bottom: 28px; line-height: 1.6; }
-
-        .tc-open-btn {
-            display: inline-block;
-            padding: 13px 32px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: opacity 0.15s;
-        }
-
-        .tc-open-btn:hover { opacity: 0.88; }
 
         /* 대시보드 섹션 */
         .dashboard-body {
@@ -238,16 +208,9 @@
     <!-- ── 메인 콘텐츠 ── -->
     <div class="main-content">
 
-        <!-- TC 생성기: 별도 실행 안내 -->
+        <!-- TC 생성기: iframe -->
         <div class="tool-section" id="tc-section">
-            <div class="tc-placeholder">
-                <div class="tc-card">
-                    <div class="icon">📋</div>
-                    <h2>TC 생성기</h2>
-                    <p>TC 생성기는 별도 프로그램으로 실행됩니다.<br>아래 버튼을 눌러 새 탭에서 열어주세요.</p>
-                    <a class="tc-open-btn" href="http://localhost:5000" target="_blank">TC 생성기 열기</a>
-                </div>
-            </div>
+            <iframe id="tc-frame" src="http://localhost:5000"></iframe>
         </div>
 
         <!-- Jira 대시보드 생성기 -->
