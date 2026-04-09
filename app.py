@@ -60,12 +60,12 @@ def api_create_dashboard():
         '"In Progress", "In Developer Test", "In Code Review", HOLD, Done)'
     )
     filter_specs = [
-        ("버그 전체",        f"{base_jql} AND {all_status} ORDER BY created DESC"),
-        ("버그 오픈",        f"{base_jql} AND status = SUGGESTED ORDER BY created DESC"),
-        ("버그 IN PROGRESS", f"{base_jql} AND status IN ('In Progress', 'In Developer Test', 'In Code Review') ORDER BY created DESC"),
-        ("버그 IN QA",       f"{base_jql} AND status IN ('in QA', 'Ready To Test') ORDER BY created DESC"),
-        ("버그 CLOSED",      f"{base_jql} AND status = Done ORDER BY created DESC"),
-        ("버그 심각도순",     f"{base_jql} AND {all_status} ORDER BY priority ASC, created DESC"),
+        (f"[{epic_key}] 버그 전체",        f"{base_jql} AND {all_status} ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 오픈",        f"{base_jql} AND status = SUGGESTED ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 IN PROGRESS", f"{base_jql} AND status IN ('In Progress', 'In Developer Test', 'In Code Review') ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 IN QA",       f"{base_jql} AND status IN ('in QA', 'Ready To Test') ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 CLOSED",      f"{base_jql} AND status = Done ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 심각도순",     f"{base_jql} AND {all_status} ORDER BY priority ASC, created DESC"),
     ]
 
     log(f"\n[2/4] 필터 생성 중... (총 {len(filter_specs)}개)")
