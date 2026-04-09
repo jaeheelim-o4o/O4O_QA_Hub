@@ -9,16 +9,41 @@ QA 업무 자동화 도구 모음입니다.
 
 | 도구 | 설명 |
 |------|------|
+| 📋 TC 생성기 | PRD/Figma 링크 입력 → TestCase 자동 생성 |
 | 📊 Jira 대시보드 생성기 | 에픽 번호 입력 → QA 대시보드 자동 생성 |
-| 📋 TC 생성기 | 별도 실행 후 연동 (localhost:5000) |
 
 ---
 
 ## 실행 방법
 
-### 1단계 — .env 설정
+### 1단계 — start.command 다운로드
 
-처음 실행 시 `.env.example`을 참고해서 `.env` 파일에 본인의 Jira 정보를 입력합니다.
+GitHub에서 `start.command` 파일 하나만 다운로드합니다.
+
+> **처음 실행 시 "확인되지 않은 개발자" 경고가 뜨는 경우**  
+> 파일 우클릭 → [열기] → [열기] 를 선택해 한 번만 허용해주세요.
+
+> **더블클릭해도 반응이 없는 경우**  
+> 터미널에서 아래 명령어를 한 번만 실행 후 다시 시도하세요.
+> ```bash
+> chmod +x ~/Downloads/start.command
+> ```
+
+### 2단계 — 실행
+
+`start.command` 파일을 더블클릭합니다.
+
+처음 실행 시 자동으로:
+- TC 생성기 소스 (`namseok-ko/TestCase_Generator`) 다운로드
+- QA Hub 소스 다운로드 및 설치
+- 두 서버 동시 실행
+
+이후 실행부터는 최신 버전 여부를 확인 후 바로 시작합니다.
+
+### 3단계 — .env 설정
+
+처음 실행 시 `.env` 파일이 자동 생성되며 텍스트 에디터로 열립니다.  
+본인의 Jira 정보를 입력 후 저장하고 엔터를 누르면 실행됩니다.
 
 ```
 JIRA_EMAIL=your-email@company.com
@@ -31,19 +56,19 @@ BUG_PROJECT=OFFSYSM
 
 > `.env` 파일이 Finder에서 안 보이는 경우 해당 폴더에서 `Cmd + Shift + .` 을 누르면 숨김 파일이 표시됩니다.
 
-### 2단계 — 실행
+---
 
-`start.command` 파일을 더블클릭합니다.  
-브라우저가 자동으로 열리며 `http://localhost:5001` 에서 실행됩니다.
+## 실행 구조
 
-> **처음 실행 시 "확인되지 않은 개발자" 경고가 뜨는 경우**  
-> 파일 우클릭 → [열기] → [열기] 를 선택해 한 번만 허용해주세요.
+`start.command` 하나로 두 서버가 동시에 실행됩니다.
 
-> **더블클릭해도 반응이 없는 경우**  
-> 터미널에서 아래 명령어를 한 번만 실행 후 다시 시도하세요.
-> ```bash
-> chmod +x ~/QA_Hub/start.command
-> ```
+| 프로그램 | 포트 | 소스 |
+|----------|------|------|
+| TC 생성기 | localhost:5000 | `namseok-ko/TestCase_Generator` |
+| QA Hub | localhost:5001 | `jaeheelim-o4o/O4O_QA_Hub` |
+
+브라우저는 QA Hub(`localhost:5001`)로 자동 열리며,  
+사이드바에서 TC 생성기를 선택하면 화면 안에서 바로 사용할 수 있습니다.
 
 ---
 
@@ -78,25 +103,13 @@ BUG_PROJECT=OFFSYSM
 
 ---
 
-## TC 생성기 연동
-
-TC 생성기는 별도 프로그램(`TestCase_Generator-main`)으로 실행됩니다.  
-QA Hub에서 **TC 생성기** 메뉴를 클릭하면 `http://localhost:5000` 이 새 탭으로 열립니다.
-
-두 프로그램을 함께 사용하려면 각각의 `start.command`를 실행해주세요.
-
-| 프로그램 | 포트 |
-|----------|------|
-| TC 생성기 (`TestCase_Generator-main`) | localhost:5000 |
-| QA Hub (`QA_Hub`) | localhost:5001 |
-
----
-
 ## 팀원 공유 방법
 
-1. `QA_Hub` 폴더를 공유합니다. (`.env` 파일은 제외)
-2. 팀원은 `.env.example`을 복사해서 `.env`로 저장 후 본인 Jira 토큰 입력
-3. `start.command` 더블클릭으로 실행
+1. 이 저장소의 `start.command` 파일을 공유합니다.
+2. 팀원이 더블클릭하면 모든 설치가 자동으로 진행됩니다.
+3. `.env` 파일에 본인의 Jira 토큰만 입력하면 완료입니다.
+
+> `.env` 파일은 Git에 포함되지 않으므로 각자 개별 설정이 필요합니다.
 
 ---
 
