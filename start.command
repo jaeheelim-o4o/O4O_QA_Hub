@@ -93,7 +93,28 @@ cd "$BASE_DIR"
 # [2] QA Hub 설정
 # ══════════════════════════════════════════════════════════
 echo ""
-echo "[QA Hub] 시작 중..."
+echo "[QA Hub] 최신 버전 확인 중..."
+
+HUB_REPO="https://github.com/jaeheelim-o4o/O4O_QA_Hub.git"
+
+if [ ! -d "$BASE_DIR/.git" ]; then
+    git init -q
+    git remote add origin "$HUB_REPO"
+fi
+
+git fetch origin main -q 2>/dev/null
+LOCAL=$(git rev-parse HEAD 2>/dev/null || echo "none")
+REMOTE=$(git rev-parse origin/main 2>/dev/null || echo "unknown")
+
+if [ "$LOCAL" = "$REMOTE" ]; then
+    echo "  이미 최신 버전입니다."
+else
+    echo "  새 버전 업데이트 중..."
+    [ -f ".env" ] && cp .env .env.backup
+    git reset --hard origin/main -q
+    [ -f ".env.backup" ] && cp .env.backup .env && rm .env.backup
+    echo "  업데이트 완료!"
+fi
 
 if [ ! -d "$BASE_DIR/venv" ]; then
     echo "  가상환경 생성 중..."
