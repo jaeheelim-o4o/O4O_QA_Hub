@@ -90,10 +90,10 @@ class CheckoutPage:
     def skip_tax_refund(self):
         self.page.wait_for_selector("text=택스리펀", timeout=10000)
 
-        skip_btn = self.page.locator("button", has_text="건너뛰기")
+        # data-testid로 정확히 지정 (같은 텍스트 '건너뛰기' 버튼이 2개 존재)
+        skip_btn = self.page.get_by_test_id("taxfree-skip")
         skip_btn.wait_for(state="visible", timeout=5000)
-        self.page.wait_for_timeout(1000)  # 슬라이드 인 애니메이션 완료 대기
-        # JS 직접 호출: 애니메이션/오버레이 관계없이 클릭 핸들러 직접 실행
+        self.page.wait_for_timeout(1000)
         skip_btn.evaluate("el => el.click()")
 
         self.page.wait_for_selector("text=택스리펀", state="hidden", timeout=10000)
