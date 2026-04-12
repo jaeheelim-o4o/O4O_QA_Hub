@@ -90,14 +90,12 @@ class CheckoutPage:
     def skip_tax_refund(self):
         self.page.wait_for_selector("text=택스리펀", timeout=10000)
 
-        skip_btn = self.page.get_by_role("button", name="건너뛰기")
-        # visible 후 애니메이션이 끝나 버튼이 안정될 때까지 대기
+        skip_btn = self.page.locator("button", has_text="건너뛰기")
         skip_btn.wait_for(state="visible", timeout=5000)
-        skip_btn.wait_for(state="attached", timeout=5000)
-        self.page.wait_for_timeout(500)  # 슬라이드 인 애니메이션 완료 대기
-        skip_btn.click()
+        self.page.wait_for_timeout(1000)  # 슬라이드 인 애니메이션 완료 대기
+        # force=True: 오버레이에 가려진 경우에도 직접 클릭 이벤트 전달
+        skip_btn.click(force=True)
 
-        # 클릭 성공 검증: 레이어 닫힘 + 결제 수단 화면 등장
         self.page.wait_for_selector("text=택스리펀", state="hidden", timeout=10000)
 
     # ── Step 9: 결제 수단 선택 → 신용/체크카드 ──────────────────
