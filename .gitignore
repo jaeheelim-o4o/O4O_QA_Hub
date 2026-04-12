@@ -2,3 +2,11 @@
 venv/
 __pycache__/
 *.pyc
+*.pyo
+
+# UI 자동화 - 세션 파일 (민감 정보)
+tests/sessions/*.json
+tests/profiles/
+
+# UI 자동화 - 테스트 결과
+test_results/

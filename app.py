@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 import os
+import sys
 import base64
+import subprocess
+import threading
+import uuid
 import requests as http_requests
 from dotenv import load_dotenv
 
@@ -13,6 +17,12 @@ app = Flask(__name__)
 @app.route('/')
 def hub():
     return render_template('hub.html')
+
+
+@app.route('/api/whoami')
+def api_whoami():
+    import socket
+    return jsonify({'user': socket.gethostname()})
 
 
 @app.route('/api/create-dashboard', methods=['POST'])
@@ -205,6 +215,143 @@ def api_create_dashboard():
     url = f"{jira_base_url}/jira/dashboards/{dashboard_id}"
     log(f"\n✅ 완료!")
     return jsonify({'log': '\n'.join(log_lines), 'url': url})
+
+
+# ── UI 자동화 실행 상태 저장 ──────────────────────────────────
+_ui_runs = {}  # {run_id: {"status": "running"|"done"|"error", ...}}
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+@app.route('/api/ui-test/run', methods=['POST'])
+def api_ui_test_run():
+    data         = request.get_json()
+    service      = data.get('service', 'self_pos')
+    api_type     = data.get('api_type', 'mpos')
+    fe_type      = data.get('fe_type', 'MPOS')
+    tests        = data.get('tests', [])
+    triggered_by = data.get('triggered_by', '')
+    headless     = data.get('headless', True)
+
+    if service not in ('self_pos', 'mpos', 'pdp'):
+        return jsonify({'error': '알 수 없는 서비스입니다.'}), 400
+
+    run_id     = uuid.uuid4().hex[:8]
+    report_dir = os.path.join(ROOT_DIR, 'test_results', 'html', run_id)
+    os.makedirs(report_dir, exist_ok=True)
+    report_path = os.path.join(report_dir, 'report.html')
+
+    test_path = os.path.join('tests', service)
+    if tests:
+        test_path = ' '.join(
+            os.path.join('tests', service, t) for t in tests
+        )
+
+    _ui_runs[run_id] = {
+        'status':       'running',
+        'service':      service,
+        'api_type':     api_type,
+        'fe_type':      fe_type,
+        'headless':     headless,
+        'report_path':  report_path,
+        'triggered_by': triggered_by,
+        'result':       None
+    }
+
+    def _run():
+        env = os.environ.copy()
+        env['UI_TEST_API_TYPE'] = api_type
+        env['UI_TEST_FE_TYPE']  = fe_type
+        env['UI_TEST_HEADLESS'] = 'true' if headless else 'false'
+
+        cmd = [
+            sys.executable, '-m', 'pytest',
+            os.path.join('tests', service),
+            f'--html={report_path}',
+            '--self-contained-html',
+            '-v'
+        ]
+
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True,
+            env=env, cwd=ROOT_DIR
+        )
+
+        _ui_runs[run_id]['status'] = 'done' if proc.returncode in (0, 1) else 'error'
+        _ui_runs[run_id]['result'] = {
+            'returncode': proc.returncode,
+            'stdout':     proc.stdout[-4000:],
+            'stderr':     proc.stderr[-1000:]
+        }
+
+        try:
+            from tests.slack_notify import send_slack_notification
+            send_slack_notification(
+                service=service, api_type=api_type, fe_type=fe_type,
+                report_path=report_path, run_id=run_id,
+                hub_base_url='http://localhost:5001',
+                stdout=proc.stdout,
+                triggered_by=_ui_runs[run_id].get('triggered_by', '')
+            )
+        except Exception:
+            pass
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({'run_id': run_id})
+
+
+@app.route('/api/ui-test/status/<run_id>')
+def api_ui_test_status(run_id):
+    run = _ui_runs.get(run_id)
+    if not run:
+        return jsonify({'error': 'run_id를 찾을 수 없습니다.'}), 404
+    return jsonify({'status': run['status'], 'result': run.get('result')})
+
+
+@app.route('/api/ui-test/session/refresh', methods=['POST'])
+def api_ui_test_session_refresh():
+    data    = request.get_json()
+    service = data.get('service', 'self_pos')
+    if service not in ('self_pos', 'mpos', 'pdp'):
+        return jsonify({'error': '알 수 없는 서비스입니다.'}), 400
+
+    subprocess.Popen(
+        [sys.executable, 'tests/session_manager.py', service],
+        cwd=ROOT_DIR
+    )
+    return jsonify({'message': f'{service} 세션 갱신 브라우저가 열렸습니다.'})
+
+
+@app.route('/api/ui-test/report/<run_id>')
+def api_ui_test_report(run_id):
+    run = _ui_runs.get(run_id)
+    if not run:
+        return jsonify({'error': 'run_id를 찾을 수 없습니다.'}), 404
+    path = run.get('report_path', '')
+    if not os.path.exists(path):
+        return jsonify({'error': '리포트 파일이 아직 없습니다.'}), 404
+    return send_file(path, mimetype='text/html')
+
+
+@app.route('/api/ui-test/trace/<run_id>')
+def api_ui_test_trace(run_id):
+    run = _ui_runs.get(run_id)
+    if not run:
+        return jsonify({'error': 'run_id를 찾을 수 없습니다.'}), 404
+    service    = run.get('service', 'self_pos')
+    traces_dir = os.path.join(ROOT_DIR, 'test_results', 'traces')
+    if not os.path.exists(traces_dir):
+        return jsonify({'error': 'Trace 파일이 없습니다.'}), 404
+    files = sorted(
+        [f for f in os.listdir(traces_dir) if f.startswith(f"{service}_") and f.endswith('.zip')],
+        reverse=True
+    )
+    if not files:
+        return jsonify({'error': 'Trace 파일이 없습니다.'}), 404
+    return send_file(
+        os.path.join(traces_dir, files[0]),
+        as_attachment=True,
+        download_name=f'trace_{run_id}.zip'
+    )
 
 
 if __name__ == '__main__':

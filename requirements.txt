@@ -1,3 +1,9 @@
 flask
 requests
 python-dotenv
+playwright
+pytest
+pytest-playwright
+pytest-html
+allure-pytest
+slack-sdk

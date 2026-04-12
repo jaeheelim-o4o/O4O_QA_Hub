@@ -184,6 +184,113 @@
         .result-link-box.show { display: block; }
         .result-link-box p { font-size: 13px; color: #166534; margin-bottom: 8px; font-weight: 600; }
         .result-link-box a { color: #4f46e5; font-size: 13px; word-break: break-all; }
+
+        /* ── UI 자동화 섹션 ───────────────────────────────── */
+        .ui-auto-body {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #1e1e2e 0%, #313244 100%);
+        }
+
+        .ui-auto-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            padding: 36px 40px;
+            max-width: 580px;
+            width: 100%;
+        }
+
+        .ui-auto-card h1 { font-size: 22px; color: #1e1e2e; margin-bottom: 4px; }
+        .ui-auto-card .subtitle { color: #6b7280; font-size: 13px; margin-bottom: 28px; }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+        .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .radio-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border: 2px solid #e5e7eb; border-radius: 8px;
+            cursor: pointer; font-size: 13px; font-weight: 500; color: #374151;
+            transition: border-color 0.15s, background 0.15s;
+            user-select: none;
+        }
+        .radio-btn input { display: none; }
+        .radio-btn.selected { border-color: #6366f1; background: #eef2ff; color: #4338ca; }
+
+        .select-box {
+            width: 100%; padding: 9px 12px; border: 2px solid #e5e7eb;
+            border-radius: 8px; font-size: 14px; outline: none;
+            transition: border-color 0.2s; background: white; color: #1f2937;
+        }
+        .select-box:focus { border-color: #6366f1; }
+
+        .ui-divider { border: none; border-top: 1px solid #f3f4f6; margin: 20px 0; }
+
+        .btn-row { display: flex; gap: 10px; margin-top: 4px; }
+
+        .run-btn {
+            flex: 1; padding: 12px; background: linear-gradient(135deg, #6366f1, #7c3aed);
+            color: white; border: none; border-radius: 10px; font-size: 14px;
+            font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+        }
+        .run-btn:hover { opacity: 0.9; }
+        .run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .refresh-btn {
+            padding: 12px 18px; background: #f9fafb; color: #374151;
+            border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px;
+            font-weight: 600; cursor: pointer; transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .refresh-btn:hover { background: #f3f4f6; }
+
+        .result-panel {
+            margin-top: 24px; display: none;
+        }
+        .result-panel.show { display: block; }
+
+        .result-summary {
+            display: flex; gap: 12px; margin-bottom: 14px;
+        }
+        .result-badge {
+            flex: 1; padding: 12px; border-radius: 10px; text-align: center;
+            font-size: 13px; font-weight: 600;
+        }
+        .badge-pass { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .badge-fail { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .badge-total { background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; }
+
+        .result-log {
+            background: #1e1e2e; border-radius: 10px; padding: 14px 16px;
+            font-family: 'Courier New', monospace; font-size: 12px; color: #cdd6f4;
+            line-height: 1.7; max-height: 220px; overflow-y: auto;
+            white-space: pre-wrap; word-break: break-all;
+        }
+        .result-log .pass-line { color: #a6e3a1; }
+        .result-log .fail-line { color: #f38ba8; }
+
+        .result-actions { display: flex; gap: 10px; margin-top: 12px; }
+        .action-btn {
+            flex: 1; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px;
+            background: white; font-size: 13px; font-weight: 500; cursor: pointer;
+            color: #374151; transition: background 0.15s; text-decoration: none;
+            text-align: center; display: block;
+        }
+        .action-btn:hover { background: #f9fafb; }
+
+        .status-bar {
+            margin-top: 12px; padding: 10px 14px; background: #fef9c3;
+            border: 1px solid #fde047; border-radius: 8px;
+            font-size: 13px; color: #713f12; display: none;
+        }
+        .status-bar.show { display: block; }
+        .status-bar.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .status-bar.success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
     </style>
 </head>
 <body>
@@ -201,6 +308,9 @@
             </button>
             <button class="nav-item active" id="nav-dashboard" onclick="switchTool('dashboard-section', this)">
                 <span class="nav-icon">📊</span> Jira 대시보드
+            </button>
+            <button class="nav-item" id="nav-ui-auto" onclick="switchTool('ui-auto-section', this)">
+                <span class="nav-icon">🤖</span> UI 자동화
             </button>
         </div>
     </nav>
@@ -238,6 +348,104 @@
             </div>
         </div>
 
+        <!-- UI 자동화 섹션 -->
+        <div class="tool-section" id="ui-auto-section">
+            <div class="ui-auto-body">
+                <div class="ui-auto-card">
+                    <h1>🤖 UI 자동화 테스트</h1>
+                    <p class="subtitle">서비스와 환경을 선택하고 테스트를 실행하세요.</p>
+
+                    <!-- 서비스 선택 -->
+                    <div class="form-group">
+                        <label>서비스</label>
+                        <div class="radio-group" id="service-group">
+                            <label class="radio-btn selected" onclick="selectService(this, 'self_pos')">
+                                <input type="radio" name="service" value="self_pos" checked> Self-POS
+                            </label>
+                            <label class="radio-btn" onclick="selectService(this, 'mpos')">
+                                <input type="radio" name="service" value="mpos"> mPOS
+                            </label>
+                            <label class="radio-btn" onclick="selectService(this, 'pdp')">
+                                <input type="radio" name="service" value="pdp"> PDP
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- FE 환경 (mPOS만) -->
+                    <div class="form-group" id="fe-group" style="display:none">
+                        <label>FE 환경</label>
+                        <select class="select-box" id="fe-type">
+                            <option value="MPOS">MPOS</option>
+                            <option value="MPOS2">MPOS2</option>
+                            <option value="MPOS3">MPOS3</option>
+                        </select>
+                    </div>
+
+                    <!-- API 환경 -->
+                    <div class="form-group">
+                        <label>API 환경</label>
+                        <select class="select-box" id="api-type">
+                            <option value="mpos">mpos (기본)</option>
+                            <option value="mpos1">mpos1</option>
+                            <option value="mpos2">mpos2</option>
+                            <option value="mpos3">mpos3</option>
+                            <option value="mpos4">mpos4</option>
+                            <option value="mpos5">mpos5</option>
+                        </select>
+                    </div>
+
+                    <hr class="ui-divider">
+
+                    <!-- 실행자 -->
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block;font-size:12px;color:#666;font-weight:600;margin-bottom:5px;">실행자 (Slack 알림 포함)</label>
+                        <input type="text" id="triggered-by"
+                            placeholder="이름 입력"
+                            style="width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;">
+                    </div>
+
+                    <!-- 실행 모드 -->
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block;font-size:12px;color:#666;font-weight:600;margin-bottom:8px;">실행 모드</label>
+                        <div style="display:flex;gap:8px;">
+                            <label id="mode-headless" onclick="selectMode(this,'headless')"
+                                style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border:2px solid #4A90D9;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:#4A90D9;background:#EFF6FF;">
+                                <span>🤖</span> Headless
+                            </label>
+                            <label id="mode-headed" onclick="selectMode(this,'headed')"
+                                style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border:2px solid #ddd;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:#888;background:#fff;">
+                                <span>👁</span> Headed
+                            </label>
+                        </div>
+                        <p id="mode-desc" style="font-size:11px;color:#888;margin:5px 0 0;text-align:center;">브라우저 창 없이 백그라운드 실행</p>
+                    </div>
+
+                    <!-- 실행 버튼 -->
+                    <div class="btn-row">
+                        <button class="run-btn" id="run-btn" onclick="runTests()">▶ 테스트 실행</button>
+                        <button class="refresh-btn" onclick="refreshSession()">🔄 세션 갱신</button>
+                    </div>
+
+                    <!-- 상태 표시 -->
+                    <div class="status-bar" id="status-bar"></div>
+
+                    <!-- 결과 패널 -->
+                    <div class="result-panel" id="result-panel">
+                        <div class="result-summary">
+                            <div class="result-badge badge-pass">✅ 통과 <span id="res-pass">-</span>건</div>
+                            <div class="result-badge badge-fail">❌ 실패 <span id="res-fail">-</span>건</div>
+                            <div class="result-badge badge-total">전체 <span id="res-total">-</span>건</div>
+                        </div>
+                        <div class="result-log" id="result-log"></div>
+                        <div class="result-actions">
+                            <a class="action-btn" id="report-btn" href="#" target="_blank">📄 HTML 리포트</a>
+                            <a class="action-btn" id="trace-btn" href="#" target="_blank">📦 Trace 다운로드</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -246,6 +454,164 @@
             document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });
             document.getElementById(sectionId).classList.add('active');
             btn.classList.add('active');
+        }
+
+        // ── UI 자동화 ─────────────────────────────────────────
+        var _currentService = 'self_pos';
+        var _pollTimer = null;
+        var _headlessMode = true;  // 기본값: headless
+
+        function selectMode(el, mode) {
+            _headlessMode = (mode === 'headless');
+            var hl = document.getElementById('mode-headless');
+            var hd = document.getElementById('mode-headed');
+            var desc = document.getElementById('mode-desc');
+            if (_headlessMode) {
+                hl.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border:2px solid #4A90D9;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:#4A90D9;background:#EFF6FF;';
+                hd.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border:2px solid #ddd;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:#888;background:#fff;';
+                desc.textContent = '브라우저 창 없이 백그라운드 실행';
+            } else {
+                hd.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border:2px solid #F59E0B;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:#B45309;background:#FFFBEB;';
+                hl.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border:2px solid #ddd;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:#888;background:#fff;';
+                desc.textContent = '브라우저 창 표시 — 실패 시 직접 확인 가능';
+            }
+        }
+
+        function selectService(el, service) {
+            document.querySelectorAll('#service-group .radio-btn').forEach(function(b) { b.classList.remove('selected'); });
+            el.classList.add('selected');
+            _currentService = service;
+            document.getElementById('fe-group').style.display = service === 'mpos' ? 'block' : 'none';
+        }
+
+        function setStatus(msg, type) {
+            var bar = document.getElementById('status-bar');
+            bar.textContent = msg;
+            bar.className = 'status-bar show' + (type ? ' ' + type : '');
+        }
+
+        function hideStatus() {
+            document.getElementById('status-bar').className = 'status-bar';
+        }
+
+        async function runTests() {
+            var apiType     = document.getElementById('api-type').value;
+            var feType      = document.getElementById('fe-type').value;
+            var triggeredBy = (document.getElementById('triggered-by').value || '').trim();
+            var runBtn      = document.getElementById('run-btn');
+
+            runBtn.disabled = true;
+            runBtn.textContent = '실행 중...';
+            document.getElementById('result-panel').classList.remove('show');
+            setStatus('⏳ 테스트를 시작합니다...');
+
+            try {
+                var resp = await fetch('/api/ui-test/run', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        service: _currentService,
+                        api_type: apiType,
+                        fe_type: feType,
+                        triggered_by: triggeredBy,
+                        headless: _headlessMode
+                    })
+                });
+                var data = await resp.json();
+                if (data.error) {
+                    setStatus('❌ ' + data.error, 'error');
+                    runBtn.disabled = false;
+                    runBtn.textContent = '▶ 테스트 실행';
+                    return;
+                }
+                pollStatus(data.run_id);
+            } catch (e) {
+                setStatus('❌ 네트워크 오류: ' + e.message, 'error');
+                runBtn.disabled = false;
+                runBtn.textContent = '▶ 테스트 실행';
+            }
+        }
+
+        function pollStatus(runId) {
+            setStatus('⏳ 테스트 실행 중... (결과를 기다리는 중)');
+            _pollTimer = setInterval(async function() {
+                try {
+                    var resp = await fetch('/api/ui-test/status/' + runId);
+                    var data = await resp.json();
+
+                    if (data.status === 'done' || data.status === 'error') {
+                        clearInterval(_pollTimer);
+                        showResult(runId, data);
+                        document.getElementById('run-btn').disabled = false;
+                        document.getElementById('run-btn').textContent = '▶ 테스트 실행';
+                    }
+                } catch (e) {
+                    clearInterval(_pollTimer);
+                    setStatus('❌ 상태 조회 오류: ' + e.message, 'error');
+                    document.getElementById('run-btn').disabled = false;
+                    document.getElementById('run-btn').textContent = '▶ 테스트 실행';
+                }
+            }, 3000);
+        }
+
+        function showResult(runId, data) {
+            var result = data.result || {};
+            var stdout = result.stdout || '';
+            var rc     = result.returncode;
+
+            // 통과/실패 파싱
+            var passMatch  = stdout.match(/(\d+) passed/);
+            var failMatch  = stdout.match(/(\d+) failed/);
+            var errorMatch = stdout.match(/(\d+) error/);
+            var passed = passMatch  ? parseInt(passMatch[1])  : 0;
+            var failed = failMatch  ? parseInt(failMatch[1])  : 0;
+            var errors = errorMatch ? parseInt(errorMatch[1]) : 0;
+            var total  = passed + failed + errors;
+
+            document.getElementById('res-pass').textContent  = passed;
+            document.getElementById('res-fail').textContent  = failed + errors;
+            document.getElementById('res-total').textContent = total || '?';
+
+            // 로그 출력
+            var logEl = document.getElementById('result-log');
+            logEl.innerHTML = stdout
+                .split('\n').slice(-60).join('\n')
+                .replace(/PASSED/g, '<span class="pass-line">PASSED</span>')
+                .replace(/FAILED/g, '<span class="fail-line">FAILED</span>')
+                .replace(/ERROR/g,  '<span class="fail-line">ERROR</span>');
+
+            // 액션 버튼
+            document.getElementById('report-btn').href = '/api/ui-test/report/' + runId;
+            document.getElementById('trace-btn').href  = '/api/ui-test/trace/' + runId;
+
+            document.getElementById('result-panel').classList.add('show');
+
+            if (data.status === 'error') {
+                setStatus('⚠ 테스트 실행 중 오류가 발생했습니다.', 'error');
+            } else if (failed + errors > 0) {
+                setStatus('❌ 테스트 완료 — 실패 항목이 있습니다.', 'error');
+            } else {
+                setStatus('✅ 테스트 완료 — 모두 통과했습니다!', 'success');
+            }
+        }
+
+        async function refreshSession() {
+            setStatus('⏳ 세션 갱신 브라우저를 여는 중...');
+            try {
+                var resp = await fetch('/api/ui-test/session/refresh', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({service: _currentService})
+                });
+                var data = await resp.json();
+                if (data.error) {
+                    setStatus('❌ ' + data.error, 'error');
+                } else {
+                    setStatus('🖥 ' + data.message + ' 로그인 완료 후 브라우저를 닫으세요.', 'success');
+                }
+            } catch (e) {
+                setStatus('❌ 네트워크 오류: ' + e.message, 'error');
+            }
         }
 
         async function createDashboard() {
@@ -285,6 +651,17 @@
                 btn.textContent = '대시보드 생성';
             }
         }
+        // 페이지 로드 시 OS 사용자 이름 자동 세팅
+        (async function() {
+            try {
+                var r = await fetch('/api/whoami');
+                var d = await r.json();
+                if (d.user) {
+                    var el = document.getElementById('triggered-by');
+                    if (el && !el.value) el.value = d.user;
+                }
+            } catch(e) {}
+        })();
     </script>
 </body>
 </html>
