@@ -6,6 +6,7 @@ import os
 import re
 import base64
 import pytest
+import allure
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
@@ -146,6 +147,15 @@ def _attach_screenshot_helper(page, ts_dir: str, shot_paths: list):
         path = os.path.join(ts_dir, f"{step_counter['n']:02d}_{name}.png")
         page.screenshot(path=path, full_page=True)
         shot_paths.append(path)
+        # Allure 스텝별 스크린샷 첨부
+        try:
+            allure.attach.file(
+                path,
+                name=f"{step_counter['n']:02d}. {name}",
+                attachment_type=allure.attachment_type.PNG,
+            )
+        except Exception:
+            pass
         return path
 
     page.take_screenshot = screenshot
@@ -571,19 +581,15 @@ def mpos_context():
         except Exception as e:
             pytest.fail(f"[{service}] 로그인 실패: {e}")
 
-        context.tracing.start(screenshots=True, snapshots=True, sources=True)
         auth_page.close()
 
         yield context, ts_dir, videos_dir, run_id
 
-        trace_path = os.path.join(TRACES_DIR, f"{service}_{run_id}.zip")
-        context.tracing.stop(path=trace_path)
         context.close()
 
 
 @pytest.fixture
 def mpos_page(mpos_context, request):
-    import shutil
     params                              = request.param if hasattr(request, "param") else (
         os.environ.get("UI_TEST_API_TYPE", "mpos"),
         os.environ.get("UI_TEST_FE_TYPE", "MPOS")
@@ -591,10 +597,13 @@ def mpos_page(mpos_context, request):
     api_type, fe_type                   = params
     context, ts_dir, videos_dir, run_id = mpos_context
 
+    safe_name      = re.sub(r'[^\w\-]', '_', request.node.name)[:60]
+    per_test_trace = os.path.join(TRACES_DIR, f"mpos_{safe_name}_{run_id}.zip")
+
     shot_paths = []
     request.node._shot_paths = shot_paths
     request.node._video_path = None
-    request.node._trace_path = os.path.join(TRACES_DIR, f"mpos_{run_id}.zip")
+    request.node._trace_path = per_test_trace
 
     target_domain = URLS["mpos"].split("//")[1].split("/")[0]
 
@@ -612,14 +621,21 @@ def mpos_page(mpos_context, request):
         localStorage.setItem('local-pos-id', '{POS_ID}');
     """)
 
+    context.tracing.start(screenshots=True, snapshots=True, sources=True)
     _attach_screenshot_helper(page, ts_dir, shot_paths)
     yield page
 
+    # TC별 trace 저장
+    try:
+        context.tracing.stop(path=per_test_trace)
+    except Exception as te:
+        print(f"  ⚠ trace 저장 실패: {te}")
+
+    # 비디오 저장
     video = page.video
     page.close()
     if video:
         try:
-            safe_name = re.sub(r'[^\w\-]', '_', request.node.name)[:60]
             dst = os.path.join(ts_dir, f"video_{safe_name}.webm")
             video.save_as(dst)
             if os.path.exists(dst) and os.path.getsize(dst) > 0:
@@ -648,12 +664,9 @@ def pdp_context():
             user_data_dir=profile,
             headless=True,
         )
-        context.tracing.start(screenshots=True, snapshots=True, sources=True)
 
         yield context, ts_dir, run_id
 
-        trace_path = os.path.join(TRACES_DIR, f"pdp_{run_id}.zip")
-        context.tracing.stop(path=trace_path)
         context.close()
 
 
@@ -665,22 +678,36 @@ def pdp_page(pdp_context, request):
     shop_no  = "64"
     context, ts_dir, run_id = pdp_context
 
+    safe_name      = re.sub(r'[^\w\-]', '_', request.node.name)[:60]
+    per_test_trace = os.path.join(TRACES_DIR, f"pdp_{safe_name}_{run_id}.zip")
+
     shot_paths = []
     request.node._shot_paths = shot_paths
-    request.node._trace_path = os.path.join(TRACES_DIR, f"pdp_{run_id}.zip")
+    request.node._trace_path = per_test_trace
 
     url  = f"{URLS['pdp']}?goodsNo={goods_no}&shopNo={shop_no}"
     page = context.new_page()
     _goto_with_env(page, url, api_type)
+
+    context.tracing.start(screenshots=True, snapshots=True, sources=True)
     _attach_screenshot_helper(page, ts_dir, shot_paths)
 
     yield page
+
+    # TC별 trace 저장
+    try:
+        context.tracing.stop(path=per_test_trace)
+    except Exception as te:
+        print(f"  ⚠ trace 저장 실패: {te}")
+
     page.close()
 
 
-# ── pytest-html extras hook ──────────────────────────────────
+# ── pytest-html extras hook + Allure 아티팩트 첨부 ─────────────
+# trylast=True: 가장 안쪽(innermost) 래퍼로 등록되어 post-yield가 가장 먼저 실행됨
+# → allure가 테스트 라이프사이클을 닫기 전에 attach가 호출되어 Attachments 탭에 표시됨
 
-@pytest.hookimpl(hookwrapper=True)
+@pytest.hookimpl(hookwrapper=True, trylast=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
     report  = outcome.get_result()
@@ -732,3 +759,44 @@ def pytest_runtest_makereport(item, call):
 
     if extra_list:
         report.extras = getattr(report, "extras", []) + extra_list
+
+    # ── Allure 아티팩트 첨부 (teardown 완료 후, allure 라이프사이클 닫히기 전) ──
+    if report.when == "teardown":
+        hub_url = os.environ.get("QA_HUB_URL", "http://localhost:5001")
+
+        # 비디오
+        video_path = getattr(item, "_video_path", None)
+        if video_path and os.path.exists(video_path):
+            try:
+                allure.attach.file(
+                    video_path,
+                    name="테스트 녹화",
+                    attachment_type=allure.attachment_type.WEBM,
+                )
+            except Exception:
+                pass
+
+        # Trace → trace.playwright.dev 링크
+        trace_path = getattr(item, "_trace_path", None)
+        if trace_path and os.path.exists(trace_path):
+            try:
+                filename     = os.path.basename(trace_path)
+                trace_url    = (
+                    f"https://trace.playwright.dev/"
+                    f"?trace={hub_url}/api/ui-test/trace-file/{filename}"
+                )
+                allure.attach(
+                    (
+                        f'<a href="{trace_url}" target="_blank" '
+                        f'style="display:inline-block;padding:6px 14px;'
+                        f'background:#1976d2;color:#fff;border-radius:4px;'
+                        f'text-decoration:none;font-size:13px;font-weight:500">'
+                        f'🔍 Playwright Trace 열기</a>'
+                        f'<p style="margin:4px 0 0;font-size:11px;color:#888">'
+                        f'{filename}</p>'
+                    ),
+                    name="Playwright Trace",
+                    attachment_type=allure.attachment_type.HTML,
+                )
+            except Exception:
+                pass

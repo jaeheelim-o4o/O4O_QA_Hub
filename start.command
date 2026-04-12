@@ -128,6 +128,27 @@ INSTALL_OUTPUT=$("$HUB_PIP" install -r "$BASE_DIR/requirements.txt" 2>&1)
 NEW_PACKAGES=$(echo "$INSTALL_OUTPUT" | grep -v "already satisfied" | grep -v "^$" | grep -v "notice" | grep -v "Requirement")
 [ -n "$NEW_PACKAGES" ] && echo "  패키지 설치 중..."
 
+# ── Allure CLI 확인 및 설치 ─────────────────────────────────
+echo ""
+echo "[Allure] 리포트 도구 확인 중..."
+if command -v allure &>/dev/null; then
+    echo "  ✅ allure CLI 이미 설치됨 ($(allure --version 2>/dev/null || echo '버전 확인 불가'))"
+elif command -v brew &>/dev/null; then
+    echo "  allure CLI 설치 중... (Java 포함, 1~3분 소요될 수 있습니다)"
+    if brew install allure; then
+        echo "  ✅ allure 설치 완료!"
+    else
+        echo ""
+        echo "  ⚠ allure CLI 설치 실패"
+        echo "  → 테스트 리포트는 Python(allure-combine)으로 자동 생성됩니다."
+        echo "  → QA Hub 웹 UI에서 리포트를 정상적으로 확인할 수 있습니다."
+    fi
+else
+    echo "  ℹ Homebrew가 설치되어 있지 않습니다."
+    echo "  → 테스트 리포트는 Python(allure-combine)으로 자동 생성됩니다."
+    echo "  → QA Hub 웹 UI에서 리포트를 정상적으로 확인할 수 있습니다."
+fi
+
 echo "  서버 시작 중... (포트 5001)"
 
 # ══════════════════════════════════════════════════════════

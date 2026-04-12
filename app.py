@@ -284,7 +284,8 @@ def api_ui_test_run():
             env=env, cwd=ROOT_DIR
         )
 
-        # allure CLI가 설치된 경우 정적 HTML 리포트 생성
+        # allure 리포트 생성: CLI 우선, 없으면 allure-combine 폴백
+        os.makedirs(allure_report_dir, exist_ok=True)
         allure_bin = shutil.which('allure')
         if allure_bin:
             try:
@@ -293,6 +294,14 @@ def api_ui_test_run():
                      '-o', allure_report_dir, '--clean'],
                     capture_output=True, timeout=60, cwd=ROOT_DIR
                 )
+            except Exception:
+                allure_bin = None  # CLI 실패 → combine 폴백
+
+        if not allure_bin:
+            try:
+                from allure_combine import combine_allure
+                combine_allure(allure_results_dir, dest_folder=allure_report_dir,
+                               auto_create_folders=True)
             except Exception:
                 pass
 
@@ -347,10 +356,11 @@ def api_ui_test_report(run_id):
     if not run:
         return jsonify({'error': 'run_id를 찾을 수 없습니다.'}), 404
 
-    # allure 리포트가 있으면 allure 우선 서빙
-    allure_index = os.path.join(run.get('allure_report_dir', ''), 'index.html')
-    if os.path.exists(allure_index):
-        return redirect(f'/api/ui-test/allure/{run_id}/')
+    # allure 리포트가 있으면 allure 우선 서빙 (CLI: index.html / combine: complete.html)
+    allure_dir = run.get('allure_report_dir', '')
+    for allure_file in ('index.html', 'complete.html'):
+        if os.path.exists(os.path.join(allure_dir, allure_file)):
+            return redirect(f'/api/ui-test/allure/{run_id}/?f={allure_file}')
 
     # fallback: pytest-html
     path = run.get('report_path', '')
@@ -361,14 +371,36 @@ def api_ui_test_report(run_id):
 
 @app.route('/api/ui-test/allure/<run_id>/')
 @app.route('/api/ui-test/allure/<run_id>/<path:filename>')
-def api_ui_test_allure(run_id, filename='index.html'):
+def api_ui_test_allure(run_id, filename=None):
     run = _ui_runs.get(run_id)
     if not run:
         return jsonify({'error': 'run_id를 찾을 수 없습니다.'}), 404
     allure_dir = run.get('allure_report_dir', '')
-    if not allure_dir or not os.path.exists(os.path.join(allure_dir, 'index.html')):
-        return jsonify({'error': 'Allure 리포트가 없습니다. allure CLI를 설치해주세요: brew install allure'}), 404
+    if not filename:
+        # f 쿼리 파라미터로 파일명 지정 (index.html or complete.html)
+        filename = request.args.get('f', 'index.html')
+    if not allure_dir or not os.path.exists(os.path.join(allure_dir, filename)):
+        return jsonify({'error': 'Allure 리포트가 없습니다.'}), 404
     return send_from_directory(allure_dir, filename)
+
+
+@app.route('/api/ui-test/trace-file/<path:filename>')
+def api_ui_test_trace_file(filename):
+    """
+    trace.playwright.dev에서 직접 열 수 있도록 CORS 헤더 포함 trace zip 서빙.
+    URL: https://trace.playwright.dev/?trace=http://localhost:5001/api/ui-test/trace-file/<filename>
+    """
+    traces_dir = os.path.join(ROOT_DIR, 'test_results', 'traces')
+    filepath   = os.path.join(traces_dir, filename)
+    # 경로 탈출 방지
+    if not os.path.abspath(filepath).startswith(os.path.abspath(traces_dir)):
+        return jsonify({'error': '잘못된 경로입니다.'}), 400
+    if not os.path.exists(filepath):
+        return jsonify({'error': 'Trace 파일이 없습니다.'}), 404
+    resp = send_file(filepath, mimetype='application/zip')
+    resp.headers['Access-Control-Allow-Origin']  = 'https://trace.playwright.dev'
+    resp.headers['Cross-Origin-Resource-Policy'] = 'cross-origin'
+    return resp
 
 
 @app.route('/api/ui-test/trace/<run_id>')
