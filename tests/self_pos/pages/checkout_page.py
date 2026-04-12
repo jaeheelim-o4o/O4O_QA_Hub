@@ -93,8 +93,8 @@ class CheckoutPage:
         skip_btn = self.page.locator("button", has_text="건너뛰기")
         skip_btn.wait_for(state="visible", timeout=5000)
         self.page.wait_for_timeout(1000)  # 슬라이드 인 애니메이션 완료 대기
-        # force=True: 오버레이에 가려진 경우에도 직접 클릭 이벤트 전달
-        skip_btn.click(force=True)
+        # JS 직접 호출: 애니메이션/오버레이 관계없이 클릭 핸들러 직접 실행
+        skip_btn.evaluate("el => el.click()")
 
         self.page.wait_for_selector("text=택스리펀", state="hidden", timeout=10000)
 

@@ -477,13 +477,7 @@ def self_pos_page(self_pos_context, request):
 
     target_domain = URLS["self_pos"].split("//")[1].split("/")[0]
 
-    # TC별 독립 trace 시작
-    context.tracing.start(screenshots=True, snapshots=True, sources=True)
-
     # ── Single Session 충돌 방지 전략 ────────────────────────────
-    # 새 페이지 생성 전에 self-pos 도메인 쿠키를 삭제해 이전 서버 세션 토큰 제거.
-    # 이후 goto() → Okta SSO가 단 하나의 새 세션만 생성 → 충돌 없음.
-    # Okta 쿠키(다른 도메인)는 유지되므로 수동 로그인 없이 자동 인증 가능.
     try:
         context.clear_cookies(domain=target_domain)
     except Exception:
@@ -497,14 +491,11 @@ def self_pos_page(self_pos_context, request):
         }}
     """)
 
+    # Okta SSO 완료까지 대기 (trace 시작 전) — Okta 네트워크가 trace를 오염시키지 않도록
     try:
         page.goto(URLS["self_pos"], wait_until="domcontentloaded", timeout=20000)
         _wait_for_app(page, target_domain, timeout=60000)
     except Exception as e:
-        try:
-            context.tracing.stop(path=per_test_trace)
-        except Exception:
-            pass
         try:
             fail_shot = os.path.join(ts_dir, "00_setup_failed.png")
             page.screenshot(path=fail_shot, full_page=True)
@@ -532,6 +523,9 @@ def self_pos_page(self_pos_context, request):
         """)
     except Exception as e:
         print(f"  [localStorage 재설정 스킵]: {e}")
+
+    # 앱 진입 완료 후 trace 시작 — 셀프계산 시작하기 화면부터 TC 종료까지 전체 캡처
+    context.tracing.start(screenshots=True, snapshots=True, sources=True)
 
     _attach_screenshot_helper(page, ts_dir, shot_paths)
     yield page
