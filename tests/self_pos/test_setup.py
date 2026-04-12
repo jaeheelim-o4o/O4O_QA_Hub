@@ -2,7 +2,6 @@
 Self-POS — 환경 설정 및 초기 진입 테스트
 """
 import os
-import pytest
 
 
 class TestSelfPosSetup:
@@ -33,19 +32,5 @@ class TestSelfPosSetup:
 
         page.take_screenshot("done")
 
-    @pytest.mark.parametrize("self_pos_page", ["mpos2", "mpos3"], indirect=True)
-    def test_api_type_switch(self, self_pos_page):
-        """
-        [TC-SELFPOS-002] API 환경 변경 후 화면 진입 확인
-        """
-        page     = self_pos_page
-        api_type = page.evaluate("localStorage.getItem('apiType')")
-
-        page.take_screenshot(f"api_{api_type}_landing")
-
-        assert api_type in ["mpos1", "mpos2", "mpos3"], f"apiType 불일치: {api_type}"
-
-        clean_url = page.url.split("?")[0]
-        assert clean_url.startswith("https://self-pos.dev.one.musinsa.com"), (
-            f"앱 URL이 아님 (로그인 화면?): {page.url}"
-        )
+    # TC-SELFPOS-002: mpos2/mpos3 환경 전환은 QA Hub UI에서 수동 선택하는 초기 설정용
+    # 자동화 테스트에서는 제외

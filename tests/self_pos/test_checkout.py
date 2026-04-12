@@ -27,19 +27,19 @@ class TestSelfPosCheckout:
         page = self_pos_page
         checkout = CheckoutPage(page)
 
-        page.take_screenshot("01_initial")
+        page.take_screenshot("initial")
 
         checkout.select_nonmember()
-        page.take_screenshot("02_nonmember_selected")
+        page.take_screenshot("nonmember_selected")
 
         checkout.scan_test_barcode("위탁-2 - 3422886")
-        page.take_screenshot("03_barcode_scanned")
+        page.take_screenshot("barcode_scanned")
 
         checkout.click_payment_button()
-        page.take_screenshot("04_payment_clicked")
+        page.take_screenshot("payment_clicked")
 
         checkout.dismiss_shopping_bag_layer()
-        page.take_screenshot("05_shopping_bag_dismissed")
+        page.take_screenshot("shopping_bag_dismissed")
 
         checkout.apply_zero_discount_coupon()
-        page.take_screenshot("06_coupon_applied")
+        page.take_screenshot("coupon_applied")
