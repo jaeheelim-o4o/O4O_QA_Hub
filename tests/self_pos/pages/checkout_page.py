@@ -93,10 +93,11 @@ class CheckoutPage:
         # data-testid로 정확히 지정 (같은 텍스트 '건너뛰기' 버튼이 2개 존재)
         skip_btn = self.page.get_by_test_id("taxfree-skip")
         skip_btn.wait_for(state="visible", timeout=5000)
-        self.page.wait_for_timeout(1000)
-        skip_btn.evaluate("el => el.click()")
+        self.page.wait_for_timeout(500)
+        skip_btn.click()
 
-        self.page.wait_for_selector("text=택스리펀", state="hidden", timeout=10000)
+        # 버튼이 사라지면 다이얼로그 닫힘 확인
+        skip_btn.wait_for(state="hidden", timeout=10000)
 
     # ── Step 9: 결제 수단 선택 → 신용/체크카드 ──────────────────
     @allure.step("결제 화면에서 신용/체크카드 선택")
