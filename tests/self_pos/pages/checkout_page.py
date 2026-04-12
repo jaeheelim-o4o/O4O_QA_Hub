@@ -91,12 +91,10 @@ class CheckoutPage:
         self.page.wait_for_selector("text=택스리펀", timeout=10000)
 
         # data-testid로 정확히 지정 (같은 텍스트 '건너뛰기' 버튼이 2개 존재)
-        skip_btn = self.page.get_by_test_id("taxfree-skip")
+        skip_btn = self.page.get_by_test_id("taxfree-dialog-cancel")
         skip_btn.wait_for(state="visible", timeout=5000)
-        # force=True: TAX 이미지가 버튼 위에 겹쳐 포인터 이벤트를 가로채므로 강제 클릭
-        skip_btn.click(force=True)
+        skip_btn.click()
 
-        # 버튼이 사라지면 다이얼로그 닫힘 확인
         skip_btn.wait_for(state="hidden", timeout=10000)
 
     # ── Step 9: 결제 수단 선택 → 신용/체크카드 ──────────────────
