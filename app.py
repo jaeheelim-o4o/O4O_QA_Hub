@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, redirect
 import os
 import sys
+import shutil
 import base64
 import subprocess
 import threading
@@ -240,6 +241,10 @@ def api_ui_test_run():
     os.makedirs(report_dir, exist_ok=True)
     report_path = os.path.join(report_dir, 'report.html')
 
+    allure_results_dir = os.path.join(ROOT_DIR, 'test_results', 'allure-results', run_id)
+    allure_report_dir  = os.path.join(ROOT_DIR, 'test_results', 'allure-report',  run_id)
+    os.makedirs(allure_results_dir, exist_ok=True)
+
     test_path = os.path.join('tests', service)
     if tests:
         test_path = ' '.join(
@@ -247,14 +252,16 @@ def api_ui_test_run():
         )
 
     _ui_runs[run_id] = {
-        'status':       'running',
-        'service':      service,
-        'api_type':     api_type,
-        'fe_type':      fe_type,
-        'headless':     headless,
-        'report_path':  report_path,
-        'triggered_by': triggered_by,
-        'result':       None
+        'status':              'running',
+        'service':             service,
+        'api_type':            api_type,
+        'fe_type':             fe_type,
+        'headless':            headless,
+        'report_path':         report_path,
+        'allure_results_dir':  allure_results_dir,
+        'allure_report_dir':   allure_report_dir,
+        'triggered_by':        triggered_by,
+        'result':              None
     }
 
     def _run():
@@ -268,6 +275,7 @@ def api_ui_test_run():
             os.path.join('tests', service),
             f'--html={report_path}',
             '--self-contained-html',
+            f'--alluredir={allure_results_dir}',
             '-v'
         ]
 
@@ -275,6 +283,18 @@ def api_ui_test_run():
             cmd, capture_output=True, text=True,
             env=env, cwd=ROOT_DIR
         )
+
+        # allure CLI가 설치된 경우 정적 HTML 리포트 생성
+        allure_bin = shutil.which('allure')
+        if allure_bin:
+            try:
+                subprocess.run(
+                    [allure_bin, 'generate', allure_results_dir,
+                     '-o', allure_report_dir, '--clean'],
+                    capture_output=True, timeout=60, cwd=ROOT_DIR
+                )
+            except Exception:
+                pass
 
         _ui_runs[run_id]['status'] = 'done' if proc.returncode in (0, 1) else 'error'
         _ui_runs[run_id]['result'] = {
@@ -326,10 +346,29 @@ def api_ui_test_report(run_id):
     run = _ui_runs.get(run_id)
     if not run:
         return jsonify({'error': 'run_id를 찾을 수 없습니다.'}), 404
+
+    # allure 리포트가 있으면 allure 우선 서빙
+    allure_index = os.path.join(run.get('allure_report_dir', ''), 'index.html')
+    if os.path.exists(allure_index):
+        return redirect(f'/api/ui-test/allure/{run_id}/')
+
+    # fallback: pytest-html
     path = run.get('report_path', '')
     if not os.path.exists(path):
         return jsonify({'error': '리포트 파일이 아직 없습니다.'}), 404
     return send_file(path, mimetype='text/html')
+
+
+@app.route('/api/ui-test/allure/<run_id>/')
+@app.route('/api/ui-test/allure/<run_id>/<path:filename>')
+def api_ui_test_allure(run_id, filename='index.html'):
+    run = _ui_runs.get(run_id)
+    if not run:
+        return jsonify({'error': 'run_id를 찾을 수 없습니다.'}), 404
+    allure_dir = run.get('allure_report_dir', '')
+    if not allure_dir or not os.path.exists(os.path.join(allure_dir, 'index.html')):
+        return jsonify({'error': 'Allure 리포트가 없습니다. allure CLI를 설치해주세요: brew install allure'}), 404
+    return send_from_directory(allure_dir, filename)
 
 
 @app.route('/api/ui-test/trace/<run_id>')
