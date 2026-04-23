@@ -128,6 +128,51 @@
 
         .field-label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
 
+        /* 팀 선택 */
+        .team-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .team-btn {
+            flex: 1;
+            min-width: 100px;
+            padding: 10px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            background: white;
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+            text-align: center;
+        }
+        .team-btn:hover { border-color: #a5b4fc; color: #4338ca; }
+        .team-btn.selected { border-color: #6366f1; background: #eef2ff; color: #4338ca; }
+        .team-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .badge-o4o  { background: #dbeafe; color: #1d4ed8; }
+        .badge-scm  { background: #fce7f3; color: #9d174d; }
+
+        .team-desc {
+            font-size: 11px;
+            color: #9ca3af;
+            margin-bottom: 20px;
+            padding: 8px 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+
         .epic-input {
             width: 100%;
             padding: 12px 16px;
@@ -328,7 +373,20 @@
             <div class="dashboard-body">
                 <div class="dashboard-card">
                     <h1>📊 Jira 대시보드 생성기</h1>
-                    <p class="subtitle">에픽 티켓 번호만 입력하면 QA 대시보드를 자동으로 만들어드립니다.</p>
+                    <p class="subtitle">팀과 에픽 티켓 번호를 선택하면 QA 대시보드를 자동으로 만들어드립니다.</p>
+
+                    <label class="field-label">팀 선택</label>
+                    <div class="team-selector" id="team-selector">
+                        <button class="team-btn selected" onclick="selectTeam(this, 'o4o')">
+                            O4O <span class="team-badge badge-o4o">PBO</span>
+                        </button>
+                        <button class="team-btn" onclick="selectTeam(this, 'scm')">
+                            SCM <span class="team-badge badge-scm">SCM Hub</span>
+                        </button>
+                    </div>
+                    <div class="team-desc" id="team-desc">
+                        필터 6개 · 가젯 9개 — 상태별(OPEN/IN PROGRESS/IN QA/CLOSED) 세분화 + 심각도/담당자 취합
+                    </div>
 
                     <label class="field-label" for="epicKey">에픽 티켓 번호</label>
                     <input class="epic-input" type="text" id="epicKey"
@@ -614,6 +672,24 @@
             }
         }
 
+        // ── 대시보드 팀 선택 ──────────────────────────────────────
+        var _selectedTeam = 'o4o';
+
+        var _teamDesc = {
+            'o4o': '필터 6개 · 가젯 9개 — 상태별(OPEN/IN PROGRESS/IN QA/CLOSED) 세분화 + 심각도/담당자 취합',
+            'scm': '필터 2개(Total/진행중) · 가젯 8개 — 우선순위별/상태별 취합 + 파이차트 + 캘린더'
+        };
+
+        function selectTeam(el, team) {
+            document.querySelectorAll('#team-selector .team-btn').forEach(function(b) {
+                b.classList.remove('selected');
+            });
+            el.classList.add('selected');
+            _selectedTeam = team;
+            var desc = _teamDesc[team] || '';
+            document.getElementById('team-desc').textContent = desc;
+        }
+
         async function createDashboard() {
             var epicKey = document.getElementById('epicKey').value.trim().toUpperCase();
             if (!epicKey) { alert('에픽 티켓 번호를 입력해주세요.'); return; }
@@ -632,7 +708,7 @@
                 var resp = await fetch('/api/create-dashboard', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({epic_key: epicKey})
+                    body: JSON.stringify({epic_key: epicKey, team: _selectedTeam})
                 });
                 var data = await resp.json();
 

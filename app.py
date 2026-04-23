@@ -28,8 +28,10 @@ def api_whoami():
 
 @app.route('/api/create-dashboard', methods=['POST'])
 def api_create_dashboard():
-    data = request.get_json()
-    epic_key = (data.get('epic_key') or '').strip().upper()
+    data      = request.get_json()
+    epic_key  = (data.get('epic_key') or '').strip().upper()
+    team      = (data.get('team') or 'o4o').strip().lower()
+
     if not epic_key:
         return jsonify({'error': '에픽 키를 입력해주세요.'}), 400
 
@@ -61,28 +63,6 @@ def api_create_dashboard():
     epic_title = r.json()["fields"]["summary"]
     log(f"  → {epic_key}: {epic_title}")
 
-    # ── 필터 생성 ──
-    base_jql = (
-        f"created >= -90d AND project = {bug_project} "
-        f"AND type = Bug AND parent = '{epic_key}'"
-    )
-    all_status = (
-        'status IN (SUGGESTED, "Ready To Test", "in QA", '
-        '"In Progress", "In Developer Test", "In Code Review", HOLD, Done)'
-    )
-    filter_specs = [
-        (f"[{epic_key}] 버그 전체",        f"{base_jql} AND {all_status} ORDER BY created DESC"),
-        (f"[{epic_key}] 버그 오픈",        f"{base_jql} AND status = SUGGESTED ORDER BY created DESC"),
-        (f"[{epic_key}] 버그 IN PROGRESS", f"{base_jql} AND status IN ('In Progress', 'In Developer Test', 'In Code Review') ORDER BY created DESC"),
-        (f"[{epic_key}] 버그 IN QA",       f"{base_jql} AND status IN ('in QA', 'Ready To Test') ORDER BY created DESC"),
-        (f"[{epic_key}] 버그 CLOSED",      f"{base_jql} AND status = Done ORDER BY created DESC"),
-        (f"[{epic_key}] 버그 심각도순",     f"{base_jql} AND {all_status} ORDER BY priority ASC, created DESC"),
-    ]
-
-    log(f"\n[2/4] 필터 생성 중... (총 {len(filter_specs)}개)")
-    filters = {}
-    label_keys = ["전체", "오픈", "IN PROGRESS", "IN QA", "CLOSED", "심각도순"]
-
     def create_filter(name, jql):
         r = http_requests.post(f"{jira_base_url}/rest/api/3/filter", headers=headers, json={
             "name": name, "jql": jql,
@@ -102,6 +82,64 @@ def api_create_dashboard():
                         return f["id"]
         return None
 
+    def add_gadget(dashboard_id, uri, col, row, color, label, config):
+        r = http_requests.post(
+            f"{jira_base_url}/rest/api/3/dashboard/{dashboard_id}/gadget",
+            headers=headers,
+            json={"uri": uri, "position": {"column": col, "row": row}, "color": color}
+        )
+        if not r.ok:
+            log(f"  ⚠ {label} 추가 실패: {r.text[:80]}")
+            return
+        gid = r.json()["id"]
+        http_requests.put(
+            f"{jira_base_url}/rest/api/3/dashboard/{dashboard_id}/gadget/{gid}",
+            headers=headers, json={"title": label, "color": color}
+        )
+        r2 = http_requests.put(
+            f"{jira_base_url}/rest/api/3/dashboard/{dashboard_id}/items/{gid}/properties/config",
+            headers=headers, json=config
+        )
+        if r2.ok:
+            log(f"  ✓ {label}")
+        else:
+            log(f"  ⚠ {label} config 실패: {r2.text[:80]}")
+
+    if team == 'scm':
+        return _create_dashboard_scm(
+            epic_key, epic_title, jira_base_url, headers, log, log_lines, create_filter, add_gadget
+        )
+    else:
+        return _create_dashboard_o4o(
+            epic_key, epic_title, jira_base_url, headers, bug_project, log, log_lines, create_filter, add_gadget
+        )
+
+
+def _create_dashboard_o4o(epic_key, epic_title, jira_base_url, headers, bug_project,
+                           log, log_lines, create_filter, add_gadget):
+    """O4O팀 대시보드: 필터 6개 + 가젯 9개"""
+
+    base_jql = (
+        f"created >= -90d AND project = {bug_project} "
+        f"AND type = Bug AND parent = '{epic_key}'"
+    )
+    all_status = (
+        'status IN (SUGGESTED, "Ready To Test", "in QA", '
+        '"In Progress", "In Developer Test", "In Code Review", HOLD, Done)'
+    )
+    filter_specs = [
+        (f"[{epic_key}] 버그 ALL",         f"{base_jql} AND {all_status} ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 OPEN",        f"{base_jql} AND status = SUGGESTED ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 IN PROGRESS", f"{base_jql} AND status IN ('In Progress', 'In Developer Test', 'In Code Review') ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 IN QA",       f"{base_jql} AND status IN ('in QA', 'Ready To Test') ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 CLOSED",      f"{base_jql} AND status = Done ORDER BY created DESC"),
+        (f"[{epic_key}] 버그 심각도순",     f"{base_jql} AND {all_status} ORDER BY priority ASC, created DESC"),
+    ]
+
+    log(f"\n[2/4] 필터 생성 중... (총 {len(filter_specs)}개)")
+    filters = {}
+    label_keys = ["ALL", "OPEN", "IN PROGRESS", "IN QA", "CLOSED", "심각도순"]
+
     for (name, jql), key in zip(filter_specs, label_keys):
         fid = create_filter(name, jql)
         if not fid:
@@ -109,7 +147,6 @@ def api_create_dashboard():
         filters[key] = fid
         log(f"  ✓ {name}  (ID: {fid})")
 
-    # ── 대시보드 생성 ──
     log(f"\n[3/4] 대시보드 생성 중...")
     r = http_requests.post(f"{jira_base_url}/rest/api/3/dashboard", headers=headers, json={
         "name": epic_title,
@@ -121,13 +158,12 @@ def api_create_dashboard():
     dashboard_id = r.json()["id"]
     log(f"  ✓ {epic_title}  (ID: {dashboard_id})")
 
-    # ── 가젯 추가 ──
     URI_FILTER = "rest/gadgets/1.0/g/com.atlassian.jira.gadgets:filter-results-gadget/gadgets/filter-results-gadget.xml"
     URI_2D     = "rest/gadgets/1.0/g/com.atlassian.jira.gadgets:two-dimensional-stats-gadget/gadgets/two-dimensional-stats-gadget.xml"
     URI_CR     = "rest/gadgets/1.0/g/com.atlassian.jira.gadgets:created-vs-resolved-issues-chart-gadget/gadgets/createdvsresolved-gadget.xml"
     URI_CAL    = "rest/gadgets/1.0/g/com.atlassian.jira.ext.calendar:issuescalendar-gadget/templates/plugins/jira/portlets/calendar/gadget/calendar-gadget.xml"
 
-    fid_all   = filters["전체"]
+    fid_all   = filters["ALL"]
     col_names = "issuetype|issuekey|summary|심각도[Dropdown]|assignee|status"
     prefix    = epic_title[:35]
 
@@ -142,9 +178,9 @@ def api_create_dashboard():
             "name": prefix, "daysprevious": "30",
             "id": fid_all, "operation": "cumulative"
         }),
-        (URI_2D,     0, 1, "blue", "버그 오픈 종류 (기능/디자인)", {
+        (URI_2D,     0, 1, "blue", "버그 OPEN 종류 (기능/디자인)", {
             "isConfigured": "true", "isPopup": "false", "refresh": "15",
-            "filterId": f"filter-{filters['오픈']}",
+            "filterId": f"filter-{filters['OPEN']}",
             "xstattype": "customfield_10275", "ystattype": "labels",
             "sortDirection": "asc", "sortBy": "natural",
             "more": "false", "numberToShow": "5"
@@ -169,9 +205,9 @@ def api_create_dashboard():
             "sortDirection": "asc", "sortBy": "natural",
             "more": "false", "numberToShow": "20"
         }),
-        (URI_FILTER, 1, 2, "blue", "버그 오픈 리스트", {
+        (URI_FILTER, 1, 2, "blue", "버그 OPEN 리스트", {
             "isConfigured": "true", "isPopup": "false", "refresh": "15",
-            "filterId": filters["오픈"], "columnNames": col_names, "num": "20"
+            "filterId": filters["OPEN"], "columnNames": col_names, "num": "20"
         }),
         (URI_FILTER, 1, 3, "blue", "버그 IN PROGRESS", {
             "isConfigured": "true", "isPopup": "false", "refresh": "15",
@@ -187,31 +223,116 @@ def api_create_dashboard():
         }),
     ]
 
-    def add_gadget(uri, col, row, color, label, config):
-        r = http_requests.post(
-            f"{jira_base_url}/rest/api/3/dashboard/{dashboard_id}/gadget",
-            headers=headers,
-            json={"uri": uri, "position": {"column": col, "row": row}, "color": color}
-        )
-        if not r.ok:
-            log(f"  ⚠ {label} 추가 실패: {r.text[:80]}")
-            return
-        gid = r.json()["id"]
-        http_requests.put(
-            f"{jira_base_url}/rest/api/3/dashboard/{dashboard_id}/gadget/{gid}",
-            headers=headers, json={"title": label, "color": color}
-        )
-        r2 = http_requests.put(
-            f"{jira_base_url}/rest/api/3/dashboard/{dashboard_id}/items/{gid}/properties/config",
-            headers=headers, json=config
-        )
-        if r2.ok:
-            log(f"  ✓ {label}")
-        else:
-            log(f"  ⚠ {label} config 실패: {r2.text[:80]}")
+    for args in gadgets:
+        add_gadget(dashboard_id, *args)
+
+    url = f"{jira_base_url}/jira/dashboards/{dashboard_id}"
+    log(f"\n✅ 완료!")
+    return jsonify({'log': '\n'.join(log_lines), 'url': url})
+
+
+def _create_dashboard_scm(epic_key, epic_title, jira_base_url, headers,
+                           log, log_lines, create_filter, add_gadget):
+    """SCM팀 대시보드: 필터 2개(Total/진행중) + 가젯 8개"""
+
+    filter_specs = [
+        (f"[{epic_key}] QA - Total",   f"issuetype = Bug AND parent = '{epic_key}'"),
+        (f"[{epic_key}] QA - 진행중",   f"issuetype = Bug AND parent = '{epic_key}' AND status NOT IN (\"Done\")"),
+    ]
+
+    log(f"\n[2/4] 필터 생성 중... (총 {len(filter_specs)}개)")
+    filters = {}
+    label_keys = ["TOTAL", "ACTIVE"]
+
+    for (name, jql), key in zip(filter_specs, label_keys):
+        fid = create_filter(name, jql)
+        if not fid:
+            return jsonify({'error': f"필터 생성 실패: {name}"})
+        filters[key] = fid
+        log(f"  ✓ {name}  (ID: {fid})")
+
+    log(f"\n[3/4] 대시보드 생성 중...")
+    r = http_requests.post(f"{jira_base_url}/rest/api/3/dashboard", headers=headers, json={
+        "name": epic_title,
+        "sharePermissions": [{"type": "authenticated"}],
+        "editPermissions": [{"type": "authenticated"}]
+    })
+    if not r.ok:
+        return jsonify({'error': f"대시보드 생성 실패: {r.text[:120]}"})
+    dashboard_id = r.json()["id"]
+    log(f"  ✓ {epic_title}  (ID: {dashboard_id})")
+
+    URI_FILTER = "rest/gadgets/1.0/g/com.atlassian.jira.gadgets:filter-results-gadget/gadgets/filter-results-gadget.xml"
+    URI_2D     = "rest/gadgets/1.0/g/com.atlassian.jira.gadgets:two-dimensional-stats-gadget/gadgets/two-dimensional-stats-gadget.xml"
+    URI_CR     = "rest/gadgets/1.0/g/com.atlassian.jira.gadgets:created-vs-resolved-issues-chart-gadget/gadgets/createdvsresolved-gadget.xml"
+    URI_CAL    = "rest/gadgets/1.0/g/com.atlassian.jira.ext.calendar:issuescalendar-gadget/templates/plugins/jira/portlets/calendar/gadget/calendar-gadget.xml"
+    URI_STATS  = "rest/gadgets/1.0/g/com.atlassian.jira.gadgets:stats-gadget/gadgets/stats-gadget.xml"
+    URI_PIE    = "rest/gadgets/1.0/g/com.atlassian.jira.gadgets:pie-chart-gadget/gadgets/piechart-gadget.xml"
+
+    fid_total  = filters["TOTAL"]
+    fid_active = filters["ACTIVE"]
+    col_names  = "issuetype|issuekey|summary|priority|assignee|status"
+    prefix     = epic_title[:35]
+
+    log(f"\n[4/4] 가젯 추가 중...")
+
+    gadgets = [
+        # col:0
+        (URI_STATS,  0, 0, "blue", "이슈수정 우선순위별 취합", {
+            "isConfigured": "true", "sortDirection": "asc",
+            "statType": "priorities", "maxResults": "10",
+            "name": prefix, "refresh": "false",
+            "projectOrFilterId": f"filter-{fid_active}",
+            "includeResolvedIssues": "false", "sortBy": "total",
+            "id": fid_active, "type": "filter"
+        }),
+        (URI_STATS,  0, 1, "blue", "이슈의 상태별 취합", {
+            "isConfigured": "true", "sortDirection": "desc",
+            "statType": "statuses", "maxResults": "10",
+            "name": prefix, "refresh": "false",
+            "projectOrFilterId": f"filter-{fid_total}",
+            "includeResolvedIssues": "false", "sortBy": "total",
+            "id": fid_total, "type": "filter"
+        }),
+        (URI_CAL,    0, 2, "blue", "일별 bug 등록 추이 캘린더", {
+            "isConfigured": "true", "numOfIssueIcons": "20",
+            "dateFieldName": "created", "name": prefix, "refresh": "15",
+            "projectOrFilterId": f"filter-{fid_total}",
+            "id": fid_total, "type": "filter", "displayVersions": "false"
+        }),
+        (URI_PIE,    0, 3, "blue", "심각도별 버그 파이차트", {
+            "isConfigured": "true", "statType": "customfield_10275",
+            "isPopup": "false", "name": prefix, "refresh": "false",
+            "projectOrFilterId": "", "id": fid_total, "type": "filter"
+        }),
+        (URI_CR,     0, 4, "blue", "생성 대비 해결 차트", {
+            "isConfigured": "true", "isPopup": "false", "refresh": "false",
+            "periodName": "daily", "showUnresolvedTrend": "false",
+            "projectOrFilterId": "", "type": "filter",
+            "versionLabel": "major", "isCumulative": "false",
+            "name": prefix, "daysprevious": "20",
+            "id": fid_total, "operation": "count"
+        }),
+        # col:1
+        (URI_2D,     1, 0, "blue", "미해결 담당자별 버그 취합", {
+            "isConfigured": "true", "isPopup": "false", "refresh": "15",
+            "filterId": f"filter-{fid_active}",
+            "xstattype": "statuses", "ystattype": "assignees",
+            "sortDirection": "desc", "sortBy": "total",
+            "more": "false", "numberToShow": "20"
+        }),
+        (URI_FILTER, 1, 1, "purple", "미해결, 진행중인 버그 취합", {
+            "isConfigured": "true", "isPopup": "false", "refresh": "15",
+            "filterId": fid_active, "columnNames": col_names, "num": "10"
+        }),
+        (URI_FILTER, 1, 2, "gray", f"{prefix} - Total", {
+            "isConfigured": "true", "isPopup": "false", "refresh": "15",
+            "filterId": fid_total, "columnNames": col_names, "num": "5"
+        }),
+    ]
 
     for args in gadgets:
-        add_gadget(*args)
+        add_gadget(dashboard_id, *args)
 
     url = f"{jira_base_url}/jira/dashboards/{dashboard_id}"
     log(f"\n✅ 완료!")
@@ -245,11 +366,10 @@ def api_ui_test_run():
     allure_report_dir  = os.path.join(ROOT_DIR, 'test_results', 'allure-report',  run_id)
     os.makedirs(allure_results_dir, exist_ok=True)
 
-    test_path = os.path.join('tests', service)
-    if tests:
-        test_path = ' '.join(
-            os.path.join('tests', service, t) for t in tests
-        )
+    # Self-POS는 TypeScript Playwright runner 사용
+    TS_RUNNER_DIR = os.path.join(os.path.dirname(ROOT_DIR), 'o4o-qa-automation')
+    use_playwright = (service == 'self_pos' and os.path.isdir(TS_RUNNER_DIR))
+    pw_report_dir  = os.path.join(TS_RUNNER_DIR, 'reports', 'html') if use_playwright else None
 
     _ui_runs[run_id] = {
         'status':              'running',
@@ -260,6 +380,7 @@ def api_ui_test_run():
         'report_path':         report_path,
         'allure_results_dir':  allure_results_dir,
         'allure_report_dir':   allure_report_dir,
+        'pw_report_dir':       pw_report_dir,
         'triggered_by':        triggered_by,
         'result':              None
     }
@@ -270,6 +391,31 @@ def api_ui_test_run():
         env['UI_TEST_FE_TYPE']  = fe_type
         env['UI_TEST_HEADLESS'] = 'true' if headless else 'false'
 
+        # ── Self-POS: TypeScript Playwright 실행 ──────────────────
+        if use_playwright:
+            hub_base_url = 'http://localhost:5001'
+            env['REPORT_URL']    = f'{hub_base_url}/api/ui-test/report/{run_id}'
+            env['TRIGGERED_BY']  = triggered_by
+
+            pw_cmd = ['npx', 'playwright', 'test', '--project=selfpos']
+            if not headless:
+                pw_cmd.append('--headed')
+
+            proc = subprocess.run(
+                pw_cmd, capture_output=True, text=True,
+                env=env, cwd=TS_RUNNER_DIR
+            )
+
+            _ui_runs[run_id]['status'] = 'done' if proc.returncode in (0, 1) else 'error'
+            _ui_runs[run_id]['result'] = {
+                'returncode': proc.returncode,
+                'stdout':     proc.stdout[-4000:],
+                'stderr':     proc.stderr[-1000:]
+            }
+            # Slack 알림은 slack-reporter.ts 가 처리하므로 여기선 스킵
+            return
+
+        # ── mPOS / PDP: 기존 pytest 실행 ─────────────────────────
         cmd = [
             sys.executable, '-m', 'pytest',
             os.path.join('tests', service),
@@ -356,7 +502,13 @@ def api_ui_test_report(run_id):
     if not run:
         return jsonify({'error': 'run_id를 찾을 수 없습니다.'}), 404
 
-    # allure 리포트가 있으면 allure 우선 서빙 (CLI: index.html / combine: complete.html)
+    # Self-POS (Playwright HTML 리포트) 우선 서빙
+    pw_report_dir = run.get('pw_report_dir', '')
+    pw_index = os.path.join(pw_report_dir, 'index.html') if pw_report_dir else ''
+    if pw_index and os.path.exists(pw_index):
+        return redirect(f'/api/ui-test/pw-report/{run_id}/index.html')
+
+    # allure 리포트 서빙 (CLI: index.html / combine: complete.html)
     allure_dir = run.get('allure_report_dir', '')
     for allure_file in ('index.html', 'complete.html'):
         if os.path.exists(os.path.join(allure_dir, allure_file)):
@@ -367,6 +519,18 @@ def api_ui_test_report(run_id):
     if not os.path.exists(path):
         return jsonify({'error': '리포트 파일이 아직 없습니다.'}), 404
     return send_file(path, mimetype='text/html')
+
+
+@app.route('/api/ui-test/pw-report/<run_id>/<path:filename>')
+def api_ui_test_pw_report(run_id, filename):
+    """Playwright HTML 리포트 정적 파일 서빙"""
+    run = _ui_runs.get(run_id)
+    if not run:
+        return jsonify({'error': 'run_id를 찾을 수 없습니다.'}), 404
+    pw_report_dir = run.get('pw_report_dir', '')
+    if not pw_report_dir or not os.path.isdir(pw_report_dir):
+        return jsonify({'error': 'Playwright 리포트가 없습니다.'}), 404
+    return send_from_directory(pw_report_dir, filename)
 
 
 @app.route('/api/ui-test/allure/<run_id>/')
