@@ -34,6 +34,14 @@ QA 업무 자동화 도구 모음입니다.
 > chmod +x ~/Downloads/start.command
 > ```
 
+> **위 방법으로도 실행이 안 되는 경우 (보안 경고 반복)**  
+> Mac 격리 속성을 제거하는 아래 명령어를 추가로 실행하세요.
+> ```bash
+> xattr -d com.apple.quarantine ~/Downloads/start.command
+> ```
+> 파일을 전용 폴더로 이동했다면 경로를 맞게 수정해주세요.  
+> 예: `xattr -d com.apple.quarantine ~/Desktop/QA_Hub/start.command`
+
 ### 2단계 — 실행
 
 폴더 안의 `start.command` 파일을 더블클릭합니다.
@@ -119,20 +127,6 @@ BUG_PROJECT=OFFSYSM
 ---
 
 ## 문제 해결
-
-### 우클릭 열기를 해도 보안 경고가 계속 뜨는 경우
-
-GitHub에서 다운로드한 파일은 Mac 격리 속성이 붙어 실행이 차단될 수 있습니다.  
-터미널을 열고 아래 명령어를 실행 후 다시 더블클릭하세요.
-
-```bash
-xattr -d com.apple.quarantine ~/Downloads/start.command
-```
-
-> 파일을 전용 폴더로 이동했다면 경로를 맞게 수정해주세요.  
-> 예: `xattr -d com.apple.quarantine ~/Desktop/QA_Hub/start.command`
-
----
 
 ### 서버 재시작이 필요한 경우
 
