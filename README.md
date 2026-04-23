@@ -16,9 +16,14 @@ QA 업무 자동화 도구 모음입니다.
 
 ## 실행 방법
 
-### 1단계 — start.command 다운로드
+### 1단계 — 폴더 생성 및 start.command 준비
 
-GitHub에서 `start.command` 파일 하나만 다운로드합니다.
+1. 원하는 위치에 폴더를 하나 만듭니다. (예: 바탕화면에 `QA_Hub` 폴더)
+2. GitHub에서 `start.command` 파일을 다운로드합니다.
+3. 다운로드한 `start.command`를 만든 폴더 안으로 이동합니다.
+
+> `start.command`를 실행한 폴더 안에 모든 파일이 설치되므로,  
+> Downloads 폴더가 아닌 **전용 폴더**를 만들어 사용하는 것을 권장합니다.
 
 > **처음 실행 시 "확인되지 않은 개발자" 경고가 뜨는 경우**  
 > 파일 우클릭 → [열기] → [열기] 를 선택해 한 번만 허용해주세요.
@@ -31,7 +36,7 @@ GitHub에서 `start.command` 파일 하나만 다운로드합니다.
 
 ### 2단계 — 실행
 
-`start.command` 파일을 더블클릭합니다.
+폴더 안의 `start.command` 파일을 더블클릭합니다.
 
 처음 실행 시 자동으로:
 - TC 생성기 소스 (`namseok-ko/TestCase_Generator`) 다운로드
@@ -121,10 +126,11 @@ GitHub에서 다운로드한 파일은 Mac 격리 속성이 붙어 실행이 차
 터미널을 열고 아래 명령어를 실행 후 다시 더블클릭하세요.
 
 ```bash
-xattr -cr ~/Downloads/start.command
+xattr -d com.apple.quarantine ~/Downloads/start.command
 ```
 
-> 파일 위치가 다르면 경로를 맞게 수정해주세요.
+> 파일을 전용 폴더로 이동했다면 경로를 맞게 수정해주세요.  
+> 예: `xattr -d com.apple.quarantine ~/Desktop/QA_Hub/start.command`
 
 ---
 
