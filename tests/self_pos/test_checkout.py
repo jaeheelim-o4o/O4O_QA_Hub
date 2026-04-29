@@ -51,7 +51,7 @@ class TestSelfPosCheckout:
         page.take_screenshot("coupon_applied")
 
         # 경우에 따라 노출되는 레이어 — 없으면 스킵
-        _dismiss_if_visible(page, checkout.confirm_security_tag_removal, "보안택")
+        _dismiss_if_visible(page, checkout.confirm_security_tag_removal, "보안 스티커")
         page.take_screenshot("after_security_tag")
 
         _dismiss_if_visible(page, checkout.skip_musinsa_membership_benefit, "무신사 가입하면")
